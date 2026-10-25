@@ -77,6 +77,19 @@ footer.credits button { text-decoration: underline; color: var(--muted); font-si
 .chip { display: inline-flex; align-items: center; gap: 4px; background: var(--brand-soft); color: var(--brand); border-radius: 999px; padding: 3px 10px; font-size: 14px; font-weight: 700; }
 .chip button { color: var(--brand); font-weight: 900; padding: 0 2px 0 4px; }
 .chip.rank { background: var(--accent-soft); color: #7a4b05; }
+.chip.need { background: var(--danger-soft); color: var(--danger); }
+.chip.pending { background: #efeae0; color: var(--muted); }
+.cat-status { margin-bottom: 6px; }
+
+/* category sections */
+.cat-sec { margin-bottom: 18px; }
+.cat-h { display: flex; align-items: center; gap: 10px; margin: 6px 0 8px; font-size: 19px; }
+.rule { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #efeae0; color: var(--muted); }
+.rule.need { background: var(--accent-soft); color: #7a4b05; }
+.none-ph { display: grid; place-items: center; font-size: 48px; background: #f3efe6; }
+.none-card .btn { background: var(--paper); color: var(--brand); border: 1.5px solid var(--brand); }
+.none-card.in .btn { background: var(--brand); color: #fff; }
+.thumb .none-ph { font-size: 22px; }
 
 /* photo */
 .ph { position: relative; width: 100%; background: #ede7da center / cover no-repeat; }
