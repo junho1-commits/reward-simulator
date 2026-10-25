@@ -1,6 +1,6 @@
 # 학급 보상 시뮬레이터
 
-6학년 사회 「가계의 합리적 선택」 수업용 웹앱입니다. 모둠이 예산 15만 원 안에서 학급 보상을 고르고, 포기한 것(기회비용)을 영수증으로 남기고, 기획서를 만듭니다. 교사 화면에서 모든 모둠의 선택을 실시간으로 봅니다.
+6학년 사회 「가계의 합리적 선택」 수업용 웹앱입니다. 모둠이 예산 15만 원 안에서 학급 보상을 고르고(먹거리·음료·활동은 1개 이상 필수, 기념품은 선택 또는 '선택 안 함'), 포기한 것(기회비용)을 영수증으로 남기고, 기획서를 만듭니다. 교사 화면에서 모든 모둠의 선택을 실시간으로 봅니다.
 
 ## 파일
 | 파일 | 내용 |
@@ -37,7 +37,12 @@
 - 핫도그: Korean potato corn dog.jpg, Beomseok, CC BY-SA 3.0
 - 과자: ParknShop Supermarket potato chip bags (Hong Kong, 2023), GRSIATEOM RIOUADOW, CC0
 - 아이스크림: Melona.jpg, Hyeon-Jeong Suk, CC BY 2.0
-- 감귤: Mandarins - whole and halved.jpg, Ivar Leidus, CC BY-SA 4.0
+- 콜라: Coca-cola 50cl can - Italia.jpg, M0tty, CC BY-SA 3.0
+- 사이다: Korea Chilsung Cider 01, Republic of Korea (KOREA.NET), CC BY-SA 2.0
+- 주스: Orange juice 1 edit1.jpg, 미국 농무부, Public domain
+- 바나나맛 우유: Binggrae Banana Flavored Milk 03.jpg, KOREA.NET, CC BY-SA 2.0
+- 이온음료: Pocari Sweat, Canada (label), 2026-04-04.jpg, Chris Woodrich, Public domain
+- 생수: Water Bottles Image.png, Thad Zajdowicz, CC0
 - 할리갈리: Halli Galli.jpg, joho345, CC BY-SA 3.0
 - 팝콘: Bowl of Popcorn (Unsplash).jpg, Alex Munsell, CC0
 - 피구공: Dodgeball team with utility balls.jpg, Kevin N. Murphy, CC BY 2.0
