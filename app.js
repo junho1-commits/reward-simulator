@@ -13,13 +13,14 @@ const dbUrl = (store.get("rs.db", "") || FIREBASE_DB_URL).replace(/\/+$/, "");
 const room = ROOM;
 const baseUrl = location.href.split(/[?#]/)[0];
 
-const newGroup = () => ({ criteria: ["", "", ""], cart: [], removed: [], reason: "", advice: "", members: "", fit: false, updatedAt: 0 });
+const newGroup = () => ({ criteria: ["", "", ""], cart: [], removed: [], goodsNone: false, reason: "", advice: "", members: "", fit: false, updatedAt: 0 });
 function normGroup(g) {
   const n = Object.assign(newGroup(), g || {});
   const arr = (v) => Array.isArray(v) ? v.filter((x) => x != null) : v && typeof v === "object" ? Object.values(v) : [];
   n.criteria = [0, 1, 2].map((i) => (arr(g && g.criteria)[i] || ""));
   n.cart = arr(n.cart);
   n.removed = arr(n.removed).map((r) => ({ id: r.id, note: r.note || "" }));
+  n.goodsNone = !!n.goodsNone;
   return n;
 }
 
@@ -43,6 +44,22 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const won = (n) => n.toLocaleString("ko-KR") + "원";
 const item = (id) => ITEMS.find((i) => i.id === id);
 const totalOf = (g) => g.cart.reduce((s, id) => s + (item(id)?.price || 0), 0);
+const countIn = (g, cat) => g.cart.filter((id) => item(id)?.cat === cat).length;
+const CAT_ORDER = Object.keys(CATS);
+const sortByCat = (list) => list.slice().sort((a, b) => CAT_ORDER.indexOf(a.cat) - CAT_ORDER.indexOf(b.cat));
+const missingCats = (g) => REQUIRED_CATS.filter((c) => countIn(g, c) === 0);
+const goodsDecided = (g) => g.goodsNone || countIn(g, "goods") > 0;
+const catLabel = (c) => CATS[c].replace(/^\S+\s/, "");
+// 분류마다 담았는지 보여 주는 칩 (먹거리·음료·활동은 필수, 기념품은 선택)
+function catStatus(g) {
+  const req = REQUIRED_CATS.map((c) => {
+    const n = countIn(g, c);
+    return `<span class="chip ${n ? "" : "need"}">${n ? "✓" : "!"} ${CATS[c]} ${n ? n + "개" : "필수"}</span>`;
+  }).join("");
+  const n = countIn(g, "goods");
+  const goods = `<span class="chip ${goodsDecided(g) ? "" : "pending"}">${goodsDecided(g) ? "✓" : "…"} ${CATS.goods} ${n ? n + "개" : g.goodsNone ? "선택 안 함" : "선택"}</span>`;
+  return `<div class="chips cat-status">${req}${goods}</div>`;
+}
 const photo = (it, cls) => `<div class="ph ${cls || ""}" style="background-image:url('img/${it.id}.jpg')" role="img" aria-label="${esc(it.name)}"></div>`;
 function ago(t) {
   if (!t) return "";
@@ -219,11 +236,11 @@ function liveCards() {
     const total = totalOf(g), over = total > BUDGET;
     const pct = Math.min(total / BUDGET, 1) * 100;
     out += `<div class="gcard ${over ? "over" : ""} ${raw ? "" : "empty-g"}">
-      <div class="gt"><b>${n}모둠</b>${over ? `<span class="chip" style="background:var(--danger-soft);color:var(--danger)">${won(total - BUDGET)} 초과</span>` : ""}<span class="time">${raw ? ago(g.updatedAt) : "아직 시작 전"}</span></div>
+      <div class="gt"><b>${n}모둠</b>${over ? `<span class="chip" style="background:var(--danger-soft);color:var(--danger)">${won(total - BUDGET)} 초과</span>` : ""}${raw ? missingCats(g).map((c) => `<span class="chip need">${catLabel(c)} 없음</span>`).join("") : ""}<span class="time">${raw ? ago(g.updatedAt) : "아직 시작 전"}</span></div>
       ${critChips(g)}
       <div class="nums"><span>${won(total)}</span><span class="left">${over ? "" : "남은 돈 " + won(BUDGET - total)}</span></div>
       <div class="track ${over ? "over" : ""}"><div class="fill" style="width:${pct}%"></div></div>
-      <div class="thumbs">${g.cart.map((id) => { const it = item(id); return it ? `<div class="thumb">${photo(it)}${esc(it.name)}</div>` : ""; }).join("") || `<span class="hint">담은 것 없음</span>`}</div>
+      <div class="thumbs">${sortByCat(g.cart.map(item).filter(Boolean)).map((it) => `<div class="thumb">${photo(it)}${esc(it.name)}</div>`).join("") || `<span class="hint">담은 것 없음</span>`}${g.goodsNone ? `<div class="thumb"><div class="ph none-ph">🙅</div>기념품 안 함</div>` : ""}</div>
       <div class="forgo">🧾 포기: ${g.removed.map((r) => esc(item(r.id)?.name || "")).join(", ") || "없음"}</div>
       <button class="btn ghost small" data-act="presentGroup" data-v="${n}" ${raw ? "" : "disabled style='opacity:.4'"}>📺 기획서 크게 보기</button>
     </div>`;
@@ -259,10 +276,7 @@ function viewSettings() {
     </div>`;
 }
 
-function viewShop() {
-  const list = ITEMS.filter((it) => shopCat === "all" || it.cat === shopCat);
-  const cats = [["all", "전체"], ...Object.entries(CATS)].map(([k, l]) => `<button data-act="cat" data-v="${k}" class="${shopCat === k ? "on" : ""}">${l}</button>`).join("");
-  const cards = list.map((it) => {
+function itemCard(it) {
     const inCart = G.cart.includes(it.id);
     return `<div class="item ${inCart ? "in" : ""}">
       ${photo(it)}
@@ -277,16 +291,34 @@ function viewShop() {
         <button class="btn" data-act="${inCart ? "remove" : "add"}" data-id="${it.id}">${inCart ? "✓ 담음 · 빼기" : "담기"}</button>
       </div>
     </div>`;
+}
+function noGoodsCard() {
+  return `<div class="item none-card ${G.goodsNone ? "in" : ""}">
+      <div class="ph none-ph">🙅</div>
+      <div class="body">
+        <div class="nm">선택 안 함</div><div class="unit">기념품 없이 계획해요</div>
+        <div class="price">0원</div>
+        <p class="hint" style="margin:4px 0 6px">기념품을 사지 않고 그 돈을 다른 곳에 써요. 고르면 담아 둔 기념품은 포기 영수증으로 옮겨져요.</p>
+        <button class="btn" data-act="noGoods">${G.goodsNone ? "✓ 선택 안 함 · 취소" : "선택 안 함"}</button>
+      </div>
+    </div>`;
+}
+function viewShop() {
+  const cats = [["all", "전체"], ...Object.entries(CATS)].map(([k, l]) => `<button data-act="cat" data-v="${k}" class="${shopCat === k ? "on" : ""}">${l}</button>`).join("");
+  const sections = Object.keys(CATS).filter((c) => shopCat === "all" || shopCat === c).map((c) => {
+    const rule = REQUIRED_CATS.includes(c) ? `<span class="rule need">1개 이상 꼭 담아요</span>` : `<span class="rule">골라도 되고, '선택 안 함'도 돼요</span>`;
+    const cards = (c === "goods" ? noGoodsCard() : "") + ITEMS.filter((it) => it.cat === c).map(itemCard).join("");
+    return `<section class="cat-sec"><h3 class="cat-h">${CATS[c]} ${rule}</h3><div class="items">${cards}</div></section>`;
   }).join("");
-  return `${budgetBar(totalOf(G), false, cartChips(G))}
+  return `${budgetBar(totalOf(G), false, catStatus(G) + cartChips(G))}
     <div class="card" style="margin-bottom:12px">
       <b>🪟 창문열기 토의로 정한 우리 모둠의 기준</b> <span class="hint">활동지 가운데 창문의 기준을 순서대로 옮겨 적어요.</span>
       <div class="crit-in">${[0, 1, 2].map((i) => `<label>${i + 1}순위<input data-field="crit" data-i="${i}" value="${esc(G.criteria[i])}" placeholder="${["예: 모두 만족", "예: 양(푸짐함)", "예: 뒤처리"][i]}"></label>`).join("")}</div>
     </div>
     <h2>1. 비교하고 담기</h2>
-    <p class="lead">담았다가 빼 보며 우리 기준에 가장 잘 맞는 조합을 찾아요. 뺀 것은 포기 영수증에 저절로 적혀요.</p>
+    <p class="lead">먹거리·음료·활동은 1개 이상 꼭 담고, 기념품은 고르거나 '선택 안 함'을 눌러요. 담았다가 빼 보며 우리 기준에 가장 잘 맞는 조합을 찾아요. 뺀 것은 포기 영수증에 저절로 적혀요.</p>
     <div class="cats">${cats}</div>
-    <div class="items">${cards}</div>`;
+    ${sections}`;
 }
 
 function viewReceipt() {
@@ -325,16 +357,20 @@ function checksHtml() {
   const c1 = G.cart.length > 0 && total <= BUDGET;
   const c3 = G.removed.length > 0 && G.removed.every((r) => r.note.trim());
   const c4 = G.advice.trim().length > 0;
+  const miss = missingCats(G);
+  const c0 = miss.length === 0 && goodsDecided(G);
   const m = (ok) => `<span class="mark ${ok ? "yes" : "no"}">${ok ? "✓" : "!"}</span>`;
-  return `<li>${m(c1)} 1. 총금액이 ${won(BUDGET)} 이내인가?</li>
-    <li><input type="checkbox" data-field="fit" ${G.fit ? "checked" : ""} aria-label="기준 부합 확인"> 2. 모둠의 3대 기준에 맞는가? <span class="hint">(모둠이 함께 확인하고 체크)</span></li>
-    <li>${m(c3)} 3. 포기 영수증에 포기한 항목과 그 까닭이 분명한가?</li>
-    <li>${m(c4)} 4. 부모님 자문을 듣고 기획서를 다시 점검했는가?</li>`;
+  const why = c0 ? "" : ` <span class="hint">(${[...miss.map((c) => catLabel(c) + " 없음"), ...(goodsDecided(G) ? [] : ["기념품을 고르거나 '선택 안 함'을 눌러요"])].join(", ")})</span>`;
+  return `<li>${m(c0)} 1. 먹거리·음료·활동을 하나 이상씩 담고, 기념품을 정했는가?${why}</li>
+    <li>${m(c1)} 2. 총금액이 ${won(BUDGET)} 이내인가?</li>
+    <li><input type="checkbox" data-field="fit" ${G.fit ? "checked" : ""} aria-label="기준 부합 확인"> 3. 모둠의 3대 기준에 맞는가? <span class="hint">(모둠이 함께 확인하고 체크)</span></li>
+    <li>${m(c3)} 4. 포기 영수증에 포기한 항목과 그 까닭이 분명한가?</li>
+    <li>${m(c4)} 5. 부모님 자문을 듣고 기획서를 다시 점검했는가?</li>`;
 }
 function viewPlan() {
   const total = totalOf(G);
-  const chosen = G.cart.map(item).filter(Boolean);
-  return `${budgetBar(total, false, cartChips(G))}
+  const chosen = sortByCat(G.cart.map(item).filter(Boolean));
+  return `${budgetBar(total, false, catStatus(G) + cartChips(G))}
     <div class="plan">
       <div class="row"><h2 class="grow">3. ${who}모둠 학급 보상 기획서</h2>
         <button class="btn warn no-print" data-act="present">📺 발표 화면</button>
@@ -343,7 +379,8 @@ function viewPlan() {
         <div class="card"><h3>🪟 우리 모둠의 3대 기준</h3>${critChips(G)}</div>
         <div class="card"><h3>✍️ 모둠원</h3><input data-field="members" value="${esc(G.members)}" placeholder="이름 대신 번호로 적어요 (예: 3, 8, 12, 19)"></div>
         <div class="card"><h3>🛒 최종 선택</h3><ul class="list">
-          ${chosen.map((it) => `<li><span>${esc(it.name)} <span class="hint">${esc(it.share)}</span></span><b>${won(it.price)}</b></li>`).join("") || `<li class="hint">아직 고르지 않았어요.</li>`}
+          ${chosen.map((it) => `<li><span><span class="hint">${catLabel(it.cat)}</span> ${esc(it.name)} <span class="hint">${esc(it.share)}</span></span><b>${won(it.price)}</b></li>`).join("") || `<li class="hint">아직 고르지 않았어요.</li>`}
+          ${G.goodsNone ? `<li><span><span class="hint">기념품</span> 선택 안 함</span><b>0원</b></li>` : ""}
           <li class="total"><span>합계</span><span style="color:${total > BUDGET ? "var(--danger)" : "inherit"}">${won(total)}</span></li></ul></div>
         <div class="card"><h3>🧾 포기한 것</h3><ul class="list">
           ${G.removed.map((r) => { const it = item(r.id); return it ? `<li><span>${esc(it.name)}</span><span class="hint">${esc(r.note || "까닭을 적어요")}</span></li>` : ""; }).join("") || `<li class="hint">포기 영수증이 비어 있어요.</li>`}</ul></div>
@@ -356,13 +393,13 @@ function viewPlan() {
 
 function presentHtml(g, n) {
   const total = totalOf(g);
-  const chosen = g.cart.map(item).filter(Boolean);
+  const chosen = sortByCat(g.cart.map(item).filter(Boolean));
   const crit = g.criteria.filter((x) => x.trim());
   return `<button class="btn close" data-act="closePresent">닫기 ✕</button>
     <h2>${n}모둠 학급 보상 기획서</h2>
     <div class="pg">
       <div class="card"><h3>🪟 우리 기준</h3><ol style="margin:0;padding-left:28px">${crit.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>-</li>"}</ol></div>
-      <div class="card"><h3>🛒 최종 선택 · <span style="color:${total > BUDGET ? "var(--danger)" : "var(--brand)"}">${won(total)}</span></h3><ul class="list">${chosen.map((it) => `<li><span>${photo(it, "pthumb")}${esc(it.name)}</span><b>${won(it.price)}</b></li>`).join("")}</ul></div>
+      <div class="card"><h3>🛒 최종 선택 · <span style="color:${total > BUDGET ? "var(--danger)" : "var(--brand)"}">${won(total)}</span></h3><ul class="list">${chosen.map((it) => `<li><span>${photo(it, "pthumb")}${esc(it.name)}</span><b>${won(it.price)}</b></li>`).join("")}${g.goodsNone ? `<li><span>🎁 기념품: 선택 안 함</span><b>0원</b></li>` : ""}</ul></div>
       <div class="card"><h3>🧾 포기한 것</h3><ul class="list">${g.removed.map((r) => { const it = item(r.id); return it ? `<li><span>${esc(it.name)}</span><span>${esc(r.note)}</span></li>` : ""; }).join("")}</ul></div>
       <div class="card"><h3>💬 고른 까닭</h3><p style="margin:0">${esc(g.reason)}</p>${g.advice ? `<h3 style="margin-top:16px">👪 학부모 자문</h3><p style="margin:0">${esc(g.advice)}</p>` : ""}</div>
     </div>`;
@@ -409,8 +446,17 @@ document.addEventListener("click", (e) => {
     }
     case "wishReset": votes = {}; wishShown = false; store.set("rs.votes", votes); break;
     case "cat": shopCat = v; break;
+    case "noGoods":
+      G.goodsNone = !G.goodsNone;
+      if (G.goodsNone) {
+        G.cart.filter((x) => item(x)?.cat === "goods").forEach((x) => { if (!G.removed.some((r) => r.id === x)) G.removed.push({ id: x, note: "" }); });
+        G.cart = G.cart.filter((x) => item(x)?.cat !== "goods");
+      }
+      saveG();
+      break;
     case "add": {
       if (!G.cart.includes(id)) G.cart.push(id);
+      if (item(id)?.cat === "goods") G.goodsNone = false;
       G.removed = G.removed.filter((r) => r.id !== id);
       saveG();
       const after = totalOf(G);
