@@ -339,7 +339,7 @@ function checksHtml() {
     <li>${m(c1)} 2. 총금액이 ${won(BUDGET)} 이내인가?</li>
     <li><input type="checkbox" data-field="fit" ${G.fit ? "checked" : ""} aria-label="기준 부합 확인"> 3. 모둠의 기준 2가지에 맞는가? <span class="hint">(모둠이 함께 확인하고 체크)</span></li>
     <li>${m(c3)} 4. 포기한 것과 그 까닭을 간단히 적었는가?</li>
-    <li>${m(c4)} 5. 부모님 자문을 듣고 기획서를 다시 점검했는가?</li>`;
+    <li>${m(c4)} 5. 부모님 질문을 적고 기획서를 다시 점검했는가?</li>`;
 }
 function viewPlan() {
   const total = totalOf(G);
@@ -359,7 +359,7 @@ function viewPlan() {
         <div class="card"><h3>✍️ 포기한 것과 까닭</h3><textarea data-field="forgoReason" rows="3" placeholder="예: 치킨을 포기했어요. 보드게임도 구입하려면 예산이 부족해서예요.">${esc(G.forgoReason)}</textarea></div>
       </div>
       <div class="card"><h3>💬 이렇게 고른 까닭</h3><textarea data-field="reason" rows="3" placeholder="우리 모둠의 기준에 비추어 왜 이 조합이 가장 만족스러운지 써요.">${esc(G.reason)}</textarea></div>
-      <div class="card"><h3>👪 학부모 자문 한 줄</h3><input data-field="advice" value="${esc(G.advice)}" placeholder="부모님께 들은 조언을 한 줄로 적어요."></div>
+      <div class="card"><h3>👪 학부모 질문 한 줄</h3><input data-field="advice" value="${esc(G.advice)}" placeholder="부모님께 받은 질문을 한 줄로 적어요. (예: 21명 모두 골고루 즐길 수 있나요?)"></div>
       <div class="card"><h3>✅ 기획서 점검</h3><ul class="list checks" id="checks">${checksHtml()}</ul></div>
     </div>`;
 }
@@ -374,7 +374,7 @@ function presentHtml(g, n) {
       <div class="card"><h3>🔺 우리 기준</h3><ol style="margin:0;padding-left:28px">${crit.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>-</li>"}</ol></div>
       <div class="card"><h3>🛒 최종 선택 · <span style="color:${total > BUDGET ? "var(--danger)" : "var(--brand)"}">${won(total)}</span></h3><ul class="list">${chosen.map((it) => `<li><span>${photo(it, "pthumb")}${esc(it.name)}</span><b>${won(it.price)}</b></li>`).join("")}${g.goodsNone ? `<li><span>🎁 기념품: 선택 안 함</span><b>0원</b></li>` : ""}</ul></div>
       <div class="card"><h3>✍️ 포기한 것과 까닭</h3><p style="margin:0;white-space:pre-wrap">${esc(g.forgoReason || "아직 적지 않았어요.")}</p></div>
-      <div class="card"><h3>💬 고른 까닭</h3><p style="margin:0">${esc(g.reason)}</p>${g.advice ? `<h3 style="margin-top:16px">👪 학부모 자문</h3><p style="margin:0">${esc(g.advice)}</p>` : ""}</div>
+      <div class="card"><h3>💬 고른 까닭</h3><p style="margin:0">${esc(g.reason)}</p>${g.advice ? `<h3 style="margin-top:16px">👪 학부모 질문</h3><p style="margin:0">${esc(g.advice)}</p>` : ""}</div>
     </div>`;
 }
 function openPresent(g, n) { $("#present").innerHTML = presentHtml(g, n); $("#present").classList.add("show"); }
