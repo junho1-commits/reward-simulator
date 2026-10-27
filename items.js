@@ -19,7 +19,7 @@ const ITEMS = [
   { id: "keyring",   cat: "goods",    name: "비즈 키링 만들기 키트", unit: "30인용",              calc: "30인용 1세트 45,000원",                  price: 45000,  share: "1인 1개 직접 만들기 (9개 남음)", pros: "직접 만들어 오래 간직해요",         cons: "만드는 시간이 필요해요" }
 ];
 const CATS = { food: "🍽️ 먹거리", drink: "🥤 음료", activity: "🎯 활동", goods: "🎁 기념품" };
-const REQUIRED_CATS = ["food", "drink", "activity"];   // 1개 이상 꼭 담아야 하는 분류. 기념품은 '선택 안 함'도 돼요.
+const REQUIRED_CATS = ["food"];   // 1개 이상 꼭 담아야 하는 분류. 음료·활동·기념품은 필수가 아니에요. (기념품에는 '선택 안 함' 카드가 있어요)
 
 const PRICE_SOURCES = [
   "확인일: 2026년 10월 25일. 쇼핑몰 가격은 할인·쿠폰에 따라 매일 바뀌어요.",
