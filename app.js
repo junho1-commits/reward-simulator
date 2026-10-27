@@ -48,17 +48,16 @@ const countIn = (g, cat) => g.cart.filter((id) => item(id)?.cat === cat).length;
 const CAT_ORDER = Object.keys(CATS);
 const sortByCat = (list) => list.slice().sort((a, b) => CAT_ORDER.indexOf(a.cat) - CAT_ORDER.indexOf(b.cat));
 const missingCats = (g) => REQUIRED_CATS.filter((c) => countIn(g, c) === 0);
-const goodsDecided = (g) => g.goodsNone || countIn(g, "goods") > 0;
 const catLabel = (c) => CATS[c].replace(/^\S+\s/, "");
-// 분류마다 담았는지 보여 주는 칩 (먹거리·음료·활동은 필수, 기념품은 선택)
+// 분류마다 담았는지 보여 주는 칩 (먹거리만 필수, 음료·활동·기념품은 필수가 아니에요)
 function catStatus(g) {
-  const req = REQUIRED_CATS.map((c) => {
+  const chips = Object.keys(CATS).map((c) => {
     const n = countIn(g, c);
-    return `<span class="chip ${n ? "" : "need"}">${n ? "✓" : "!"} ${CATS[c]} ${n ? n + "개" : "필수"}</span>`;
+    if (REQUIRED_CATS.includes(c)) return `<span class="chip ${n ? "" : "need"}">${n ? "✓" : "!"} ${CATS[c]} ${n ? n + "개" : "필수"}</span>`;
+    const none = c === "goods" && g.goodsNone;
+    return `<span class="chip ${n ? "" : "pending"}">${n ? "✓" : "·"} ${CATS[c]} ${n ? n + "개" : none ? "선택 안 함" : "필수 아님"}</span>`;
   }).join("");
-  const n = countIn(g, "goods");
-  const goods = `<span class="chip ${goodsDecided(g) ? "" : "pending"}">${goodsDecided(g) ? "✓" : "…"} ${CATS.goods} ${n ? n + "개" : g.goodsNone ? "선택 안 함" : "선택"}</span>`;
-  return `<div class="chips cat-status">${req}${goods}</div>`;
+  return `<div class="chips cat-status">${chips}</div>`;
 }
 const photo = (it, cls) => `<div class="ph ${cls || ""}" style="background-image:url('img/${it.id}.${it.id === 'movie' ? 'svg' : 'jpg'}')" role="img" aria-label="${esc(it.name)}"></div>`;
 function ago(t) {
@@ -306,7 +305,7 @@ function noGoodsCard() {
 function viewShop() {
   const cats = [["all", "전체"], ...Object.entries(CATS)].map(([k, l]) => `<button data-act="cat" data-v="${k}" class="${shopCat === k ? "on" : ""}">${l}</button>`).join("");
   const sections = Object.keys(CATS).filter((c) => shopCat === "all" || shopCat === c).map((c) => {
-    const rule = REQUIRED_CATS.includes(c) ? `<span class="rule need">1개 이상 꼭 담아요</span>` : `<span class="rule">골라도 되고, '선택 안 함'도 돼요</span>`;
+    const rule = REQUIRED_CATS.includes(c) ? `<span class="rule need">1개 이상 꼭 담아요</span>` : c === "goods" ? `<span class="rule">필수가 아니에요 · '선택 안 함'도 돼요</span>` : `<span class="rule">필수가 아니에요</span>`;
     const cards = (c === "goods" ? noGoodsCard() : "") + ITEMS.filter((it) => it.cat === c).map(itemCard).join("");
     return `<section class="cat-sec"><h3 class="cat-h">${CATS[c]} ${rule}</h3><div class="items">${cards}</div></section>`;
   }).join("");
@@ -316,7 +315,7 @@ function viewShop() {
       <div class="crit-in">${[0, 1, 2].map((i) => `<label>${i + 1}순위<input data-field="crit" data-i="${i}" value="${esc(G.criteria[i])}" placeholder="${["예: 모두 만족", "예: 양(푸짐함)", "예: 뒤처리"][i]}"></label>`).join("")}</div>
     </div>
     <h2>1. 비교하고 담기</h2>
-    <p class="lead">먹거리·음료·활동은 1개 이상 꼭 담고, 기념품은 고르거나 '선택 안 함'을 눌러요. 담았다가 빼 보며 우리 기준에 가장 잘 맞는 조합을 찾아요. 포기한 것과 까닭은 기획서에 간단히 적어요.</p>
+    <p class="lead">먹거리는 1개 이상 꼭 담아요. 음료·활동·기념품은 필수가 아니에요(기념품은 '선택 안 함'도 있어요). 담았다가 빼 보며 우리 기준에 가장 잘 맞는 조합을 찾아요. 포기한 것과 까닭은 기획서에 간단히 적어요.</p>
     <div class="cats">${cats}</div>
     ${sections}</div>
     <aside class="shop-summary card" aria-label="선택한 것과 예산">
@@ -333,10 +332,10 @@ function checksHtml() {
   const c3 = G.forgoReason.trim().length > 0;
   const c4 = G.advice.trim().length > 0;
   const miss = missingCats(G);
-  const c0 = miss.length === 0 && goodsDecided(G);
+  const c0 = miss.length === 0;
   const m = (ok) => `<span class="mark ${ok ? "yes" : "no"}">${ok ? "✓" : "!"}</span>`;
-  const why = c0 ? "" : ` <span class="hint">(${[...miss.map((c) => catLabel(c) + " 없음"), ...(goodsDecided(G) ? [] : ["기념품을 고르거나 '선택 안 함'을 눌러요"])].join(", ")})</span>`;
-  return `<li>${m(c0)} 1. 먹거리·음료·활동을 하나 이상씩 담고, 기념품을 정했는가?${why}</li>
+  const why = c0 ? "" : ` <span class="hint">(${miss.map((c) => catLabel(c) + " 없음").join(", ")})</span>`;
+  return `<li>${m(c0)} 1. 먹거리를 하나 이상 담았는가? <span class="hint">(음료·활동·기념품은 필수가 아니에요)</span>${why}</li>
     <li>${m(c1)} 2. 총금액이 ${won(BUDGET)} 이내인가?</li>
     <li><input type="checkbox" data-field="fit" ${G.fit ? "checked" : ""} aria-label="기준 부합 확인"> 3. 모둠의 3대 기준에 맞는가? <span class="hint">(모둠이 함께 확인하고 체크)</span></li>
     <li>${m(c3)} 4. 포기한 것과 그 까닭을 간단히 적었는가?</li>
