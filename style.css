@@ -224,3 +224,38 @@ footer.credits button { text-decoration: underline; color: var(--muted); font-si
   .shop-summary { position: static; max-height: none; grid-row: 1; }
 }
 @media print { .shop-layout { display: block; } .shop-summary { position: static; max-height: none; } }
+/* Chromebook: 1366×768 및 1280×720 화면 */
+@media screen {
+  main { max-width: 1440px; padding-left: 16px; padding-right: 16px; }
+  .shop-layout { grid-template-columns: minmax(0, 1fr) 350px; gap: 16px; }
+  .cats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .cats button { font-size: 23px; min-height: 54px; padding: 8px 6px; white-space: nowrap; }
+  .crit-in label { font-size: 18px; }
+  .crit-in input { font-size: 20px; min-width: 0; }
+  .shop-summary { top: 8px; max-height: calc(100dvh - 16px); padding: 18px; }
+  .shop-summary h3 { font-size: 25px; }
+  .shop-summary .list { font-size: 20px; line-height: 1.4; }
+  .shop-summary .list li { align-items: flex-start; flex-wrap: wrap; gap: 4px 10px; padding: 10px 0; }
+  .shop-summary .list li > span { flex: 1 1 155px; overflow-wrap: anywhere; }
+  .shop-summary .list b { margin-left: auto; font-size: 21px; }
+  .shop-summary .nums { font-size: 22px; line-height: 1.5; }
+  .shop-summary .nums .left { font-size: 27px; font-weight: 900; }
+  .shop-summary .chip { font-size: 16px; }
+  .summary-remove { font-size: 24px; min-width: 32px; min-height: 32px; }
+  .none-card .none-ph { background: #f1f5f4; display: grid; place-items: center; }
+  .none-symbol { width: 64px; height: 64px; border: 3px solid #6a7d77; border-radius: 50%; display: grid; place-items: center; color: #52655f; font: 48px/1 sans-serif; }
+}
+@media screen and (min-width: 1001px) and (max-width: 1399px) {
+  .items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .shop-main > .card { padding: 12px 16px; }
+}
+@media screen and (max-width: 1000px) and (min-width: 851px) {
+  .shop-layout { grid-template-columns: minmax(0, 1fr) 300px; }
+  .items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cats button { font-size: 18px; }
+}
+@media screen and (max-width: 850px) {
+  .shop-layout { grid-template-columns: minmax(0, 1fr); }
+  .shop-summary { position: static; max-height: none; }
+  .cats button { font-size: 18px; }
+}

@@ -12,15 +12,15 @@ const dbUrl = (store.get("rs.db", "") || FIREBASE_DB_URL).replace(/\/+$/, "");
 const room = ROOM;
 const baseUrl = location.href.split(/[?#]/)[0];
 
-const newGroup = () => ({ criteria: ["", ""], cart: [], removed: [], forgoReason: "", goodsNone: false, reason: "", advice: "", members: "", fit: false, updatedAt: 0 });
+const newGroup = () => ({ criteria: ["", ""], cart: [], removed: [], forgoReason: "", goodsNone: false, drinkNone: false, activityNone: false, reason: "", advice: "", members: "", fit: false, updatedAt: 0 });
 function normGroup(g) {
   const n = Object.assign(newGroup(), g || {});
   const arr = (v) => Array.isArray(v) ? v.filter((x) => x != null) : v && typeof v === "object" ? Object.values(v) : [];
-  n.criteria = [0, 1].map((i) => (arr(g && g.criteria)[i] || ""));   // 피라미드 토의로 정한 기준 2가지
+  n.criteria = [0, 1].map((i) => { const value = String(arr(g && g.criteria)[i] || ""); return /^(amount|fun)$/i.test(value.trim()) ? "" : value; });
   n.cart = arr(n.cart).filter((id) => ITEMS.some((it) => it.id === id));
   n.removed = arr(n.removed).filter((r) => r && ITEMS.some((it) => it.id === r.id)).map((r) => ({ id: r.id, note: r.note || "" }));
   n.forgoReason = String(n.forgoReason || n.removed.map((r) => `${ITEMS.find((it) => it.id === r.id)?.name || ""}${r.note ? ": " + r.note : ""}`).filter(Boolean).join(" / "));
-  n.goodsNone = !!n.goodsNone;
+  for (const cat of ["goods", "drink", "activity"]) { n[cat + "None"] = !!n[cat + "None"]; if (n[cat + "None"]) n.cart = n.cart.filter((id) => ITEMS.find((it) => it.id === id)?.cat !== cat); }
   return n;
 }
 
@@ -33,7 +33,7 @@ let votes = store.get("rs.votes", {});
 let who = null;
 let G = null;
 let tab = null;
-let shopCat = "all";
+let shopCat = "food";
 let wishShown = false;
 let groupsLive = {};
 let pinCb = null;
@@ -47,17 +47,18 @@ const totalOf = (g) => g.cart.reduce((s, id) => s + (item(id)?.price || 0), 0);
 const countIn = (g, cat) => g.cart.filter((id) => item(id)?.cat === cat).length;
 const CAT_ORDER = Object.keys(CATS);
 const sortByCat = (list) => list.slice().sort((a, b) => CAT_ORDER.indexOf(a.cat) - CAT_ORDER.indexOf(b.cat));
-const missingCats = (g) => REQUIRED_CATS.filter((c) => countIn(g, c) === 0);
+const missingCats = (g) => REQUIRED_CATS.filter((c) => countIn(g, c) === 0 && !g[c + "None"]);
+const goodsDecided = (g) => g.goodsNone || countIn(g, "goods") > 0;
 const catLabel = (c) => CATS[c].replace(/^\S+\s/, "");
-// 분류마다 담았는지 보여 주는 칩 (먹거리만 필수, 음료·활동·기념품은 필수가 아니에요)
+// 분류마다 담았는지 보여 주는 칩 (먹거리·음료·활동은 필수, 기념품은 선택)
 function catStatus(g) {
-  const chips = Object.keys(CATS).map((c) => {
-    const n = countIn(g, c);
-    if (REQUIRED_CATS.includes(c)) return `<span class="chip ${n ? "" : "need"}">${n ? "✓" : "!"} ${CATS[c]} ${n ? n + "개" : "필수"}</span>`;
-    const none = c === "goods" && g.goodsNone;
-    return `<span class="chip ${n ? "" : "pending"}">${n ? "✓" : "·"} ${CATS[c]} ${n ? n + "개" : none ? "선택 안 함" : "필수 아님"}</span>`;
+  const req = REQUIRED_CATS.map((c) => {
+    const n = countIn(g, c), none = g[c + "None"];
+    return `<span class="chip ${n || none ? "" : "need"}">${n || none ? "✓" : "!"} ${CATS[c]} ${n ? n + "개" : none ? "선택 안 함" : c === "food" ? "필수" : "선택"}</span>`;
   }).join("");
-  return `<div class="chips cat-status">${chips}</div>`;
+  const n = countIn(g, "goods");
+  const goods = `<span class="chip ${goodsDecided(g) ? "" : "pending"}">${goodsDecided(g) ? "✓" : "…"} ${CATS.goods} ${n ? n + "개" : g.goodsNone ? "선택 안 함" : "선택"}</span>`;
+  return `<div class="chips cat-status">${req}${goods}</div>`;
 }
 const photo = (it, cls) => `<div class="ph ${cls || ""}" style="background-image:url('img/${it.id}.${it.id === 'movie' ? 'svg' : 'jpg'}')" role="img" aria-label="${esc(it.name)}"></div>`;
 function ago(t) {
@@ -200,7 +201,7 @@ function cartChips(g) {
   return `<div class="chips">${g.cart.map((id) => { const it = item(id); return it ? `<span class="chip">${esc(it.name)} <button data-act="remove" data-id="${id}" aria-label="빼기">×</button></span>` : ""; }).join("")}</div>`;
 }
 function critChips(g) {
-  const c = g.criteria.map((x, i) => x.trim() ? `<span class="chip rank">${i + 1}. ${esc(x)}</span>` : "").join("");
+  const c = g.criteria.map((x, i) => x.trim() ? `<span class="chip rank">${i + 1}순위 ${esc(x)}</span>` : "").join("");
   return c ? `<div class="chips">${c}</div>` : `<span class="hint">기준을 아직 적지 않았어요.</span>`;
 }
 
@@ -239,7 +240,7 @@ function liveCards() {
       ${critChips(g)}
       <div class="nums"><span>${won(total)}</span><span class="left">${over ? "" : "남은 돈 " + won(BUDGET - total)}</span></div>
       <div class="track ${over ? "over" : ""}"><div class="fill" style="width:${pct}%"></div></div>
-      <div class="thumbs">${sortByCat(g.cart.map(item).filter(Boolean)).map((it) => `<div class="thumb">${photo(it)}${esc(it.name)}</div>`).join("") || `<span class="hint">담은 것 없음</span>`}${g.goodsNone ? `<div class="thumb"><div class="ph none-ph">🙅</div>기념품 안 함</div>` : ""}</div>
+      <div class="thumbs">${sortByCat(g.cart.map(item).filter(Boolean)).map((it) => `<div class="thumb">${photo(it)}${esc(it.name)}</div>`).join("") || `<span class="hint">담은 것 없음</span>`}${["drink", "activity", "goods"].filter((c) => g[c + "None"]).map((c) => `<div class="thumb">${catLabel(c)} 선택 안 함</div>`).join("")}</div>
       <div class="forgo">🧾 포기: ${g.removed.map((r) => esc(item(r.id)?.name || "")).join(", ") || "없음"}</div>
       <button class="btn ghost small" data-act="presentGroup" data-v="${n}" ${raw ? "" : "disabled style='opacity:.4'"}>📺 기획서 크게 보기</button>
     </div>`;
@@ -283,44 +284,44 @@ function itemCard(it) {
         <div class="nm">${esc(it.name)}</div><div class="unit">${esc(it.unit)}</div>
         <div class="price">${won(it.price)}</div><div class="calc">${esc(it.calc)}</div>
         <dl class="facts">
-          <dt>1인 배분</dt><dd>${esc(it.share)}</dd>
+          <dt>배분</dt><dd>${esc(it.share)}</dd>
           <dt>장점</dt><dd>${esc(it.pros)}</dd>
           <dt>단점</dt><dd>${esc(it.cons)}</dd>
         </dl>
-        <button class="btn" data-act="${inCart ? "remove" : "add"}" data-id="${it.id}">${inCart ? "✓ 담음 · 빼기" : "담기"}</button>
+        <button class="btn" data-act="${inCart ? "remove" : "add"}" data-id="${it.id}">${inCart ? "빼기" : "담기"}</button>
       </div>
     </div>`;
 }
-function noGoodsCard() {
-  return `<div class="item none-card ${G.goodsNone ? "in" : ""}">
-      <div class="ph none-ph">🙅</div>
+function noneRows(g) { return ["drink", "activity", "goods"].filter((c) => g[c + "None"]).map((c) => `<li><span>${catLabel(c)} 선택 안 함</span><b>0원</b></li>`).join(""); }
+function noGoodsCard(cat) {
+  return `<div class="item none-card ${G[cat + "None"] ? "in" : ""}">
+      <div class="ph none-ph" aria-hidden="true"><span class="none-symbol">−</span></div>
       <div class="body">
-        <div class="nm">선택 안 함</div><div class="unit">기념품 없이 계획해요</div>
+        <div class="nm">선택 안 함</div>
         <div class="price">0원</div>
-        <p class="hint" style="margin:4px 0 6px">기념품을 사지 않고 그 돈을 다른 곳에 써요. 고르면 담아 둔 기념품은 선택에서 빠져요.</p>
-        <button class="btn" data-act="noGoods">${G.goodsNone ? "✓ 선택 안 함 · 취소" : "선택 안 함"}</button>
+        <button class="btn" data-act="noGoods" data-v="${cat}">${G[cat + "None"] ? "선택 취소" : "선택 안 함"}</button>
       </div>
     </div>`;
 }
 function viewShop() {
-  const cats = [["all", "전체"], ...Object.entries(CATS)].map(([k, l]) => `<button data-act="cat" data-v="${k}" class="${shopCat === k ? "on" : ""}">${l}</button>`).join("");
-  const sections = Object.keys(CATS).filter((c) => shopCat === "all" || shopCat === c).map((c) => {
-    const rule = REQUIRED_CATS.includes(c) ? `<span class="rule need">1개 이상 꼭 담아요</span>` : c === "goods" ? `<span class="rule">필수가 아니에요 · '선택 안 함'도 돼요</span>` : `<span class="rule">필수가 아니에요</span>`;
-    const cards = (c === "goods" ? noGoodsCard() : "") + ITEMS.filter((it) => it.cat === c).map(itemCard).join("");
+  const cats = Object.entries(CATS).map(([k, l]) => `<button data-act="cat" data-v="${k}" class="${shopCat === k ? "on" : ""}">${l}</button>`).join("");
+  const sections = Object.keys(CATS).filter((c) => shopCat === c).map((c) => {
+    const rule = c === "food" ? `<span class="rule need">1개 이상 필수</span>` : `<span class="rule">선택 사항</span>`;
+    const cards = (c !== "food" ? noGoodsCard(c) : "") + ITEMS.filter((it) => it.cat === c).map(itemCard).join("");
     return `<section class="cat-sec"><h3 class="cat-h">${CATS[c]} ${rule}</h3><div class="items">${cards}</div></section>`;
   }).join("");
   return `<div class="shop-layout"><div class="shop-main">
     <div class="card" style="margin-bottom:12px">
-      <b>🔺 피라미드 토의로 정한 우리 모둠의 기준 2가지</b> <span class="hint">모둠이 함께 동의한 기준을 옮겨 적어요.</span>
-      <div class="crit-in">${[0, 1].map((i) => `<label>기준 ${i + 1}<input data-field="crit" data-i="${i}" value="${esc(G.criteria[i])}" placeholder="${["예: 모두의 만족", "예: 공평한 참여"][i]}"></label>`).join("")}</div>
+      <b>피라미드 토의 · 선택 기준</b>
+      <div class="crit-in">${[0, 1].map((i) => `<label>${i + 1}순위<input data-field="crit" data-i="${i}" lang="ko" spellcheck="false" autocomplete="off" value="${esc(G.criteria[i])}"></label>`).join("")}</div>
     </div>
     <h2>1. 비교하고 담기</h2>
-    <p class="lead">먹거리는 1개 이상 꼭 담아요. 음료·활동·기념품은 필수가 아니에요(기념품은 '선택 안 함'도 있어요). 담았다가 빼 보며 우리 기준에 가장 잘 맞는 조합을 찾아요. 포기한 것과 까닭은 기획서에 간단히 적어요.</p>
+    <p class="lead">6모둠 · 21명 기준</p>
     <div class="cats">${cats}</div>
     ${sections}</div>
     <aside class="shop-summary card" aria-label="선택한 것과 예산">
       <h3>🛒 선택한 것</h3>
-      <ul class="list">${sortByCat(G.cart.map(item).filter(Boolean)).map((it) => `<li><span>${esc(it.name)} <button class="summary-remove" data-act="remove" data-id="${it.id}" aria-label="${esc(it.name)} 빼기">×</button></span><b>${won(it.price)}</b></li>`).join("") || '<li class="hint">아직 담은 것이 없어요.</li>'}${G.goodsNone ? '<li><span>기념품 선택 안 함</span><b>0원</b></li>' : ''}</ul>
+      <ul class="list">${sortByCat(G.cart.map(item).filter(Boolean)).map((it) => `<li><span>${esc(it.name)} <button class="summary-remove" data-act="remove" data-id="${it.id}" aria-label="${esc(it.name)} 빼기">×</button></span><b>${won(it.price)}</b></li>`).join("") || '<li class="hint">아직 담은 것이 없어요.</li>'}${noneRows(G)}</ul>
       ${budgetBar(totalOf(G), false)}
       ${catStatus(G)}
     </aside></div>`;
@@ -332,14 +333,14 @@ function checksHtml() {
   const c3 = G.forgoReason.trim().length > 0;
   const c4 = G.advice.trim().length > 0;
   const miss = missingCats(G);
-  const c0 = miss.length === 0;
+  const c0 = miss.length === 0 && goodsDecided(G);
   const m = (ok) => `<span class="mark ${ok ? "yes" : "no"}">${ok ? "✓" : "!"}</span>`;
-  const why = c0 ? "" : ` <span class="hint">(${miss.map((c) => catLabel(c) + " 없음").join(", ")})</span>`;
-  return `<li>${m(c0)} 1. 먹거리를 하나 이상 담았는가? <span class="hint">(음료·활동·기념품은 필수가 아니에요)</span>${why}</li>
+  const why = c0 ? "" : ` <span class="hint">(${[...miss.map((c) => catLabel(c) + " 없음"), ...(goodsDecided(G) ? [] : ["기념품을 고르거나 '선택 안 함'을 눌러요"])].join(", ")})</span>`;
+  return `<li>${m(c0)} 1. 먹거리를 담고, 음료·활동·기념품의 선택 여부를 정했는가?${why}</li>
     <li>${m(c1)} 2. 총금액이 ${won(BUDGET)} 이내인가?</li>
-    <li><input type="checkbox" data-field="fit" ${G.fit ? "checked" : ""} aria-label="기준 부합 확인"> 3. 모둠의 기준 2가지에 맞는가? <span class="hint">(모둠이 함께 확인하고 체크)</span></li>
+    <li><input type="checkbox" data-field="fit" ${G.fit ? "checked" : ""} aria-label="기준 부합 확인"> 3. 모둠의 2가지 기준에 맞는가?</li>
     <li>${m(c3)} 4. 포기한 것과 그 까닭을 간단히 적었는가?</li>
-    <li>${m(c4)} 5. 부모님 질문을 적고 기획서를 다시 점검했는가?</li>`;
+    <li>${m(c4)} 5. 부모님 자문을 듣고 기획서를 다시 점검했는가?</li>`;
 }
 function viewPlan() {
   const total = totalOf(G);
@@ -350,16 +351,16 @@ function viewPlan() {
         <button class="btn warn no-print" data-act="present">📺 발표 화면</button>
         <button class="btn ghost no-print" data-act="print">🖨 인쇄</button></div>
       <div class="plan-grid">
-        <div class="card"><h3>🔺 우리 모둠의 선택 기준 2가지</h3>${critChips(G)}</div>
+        <div class="card"><h3>💬 우리 모둠의 2가지 기준</h3>${critChips(G)}</div>
         <div class="card"><h3>✍️ 모둠원</h3><input data-field="members" value="${esc(G.members)}" placeholder="이름 대신 번호로 적어요 (예: 3, 8, 12, 19)"></div>
         <div class="card"><h3>🛒 최종 선택</h3><ul class="list">
           ${chosen.map((it) => `<li><span><span class="hint">${catLabel(it.cat)}</span> ${esc(it.name)} <span class="hint">${esc(it.share)}</span></span><b>${won(it.price)}</b></li>`).join("") || `<li class="hint">아직 고르지 않았어요.</li>`}
-          ${G.goodsNone ? `<li><span><span class="hint">기념품</span> 선택 안 함</span><b>0원</b></li>` : ""}
+          ${noneRows(G)}
           <li class="total"><span>합계</span><span style="color:${total > BUDGET ? "var(--danger)" : "inherit"}">${won(total)}</span></li></ul></div>
         <div class="card"><h3>✍️ 포기한 것과 까닭</h3><textarea data-field="forgoReason" rows="3" placeholder="예: 치킨을 포기했어요. 보드게임도 구입하려면 예산이 부족해서예요.">${esc(G.forgoReason)}</textarea></div>
       </div>
       <div class="card"><h3>💬 이렇게 고른 까닭</h3><textarea data-field="reason" rows="3" placeholder="우리 모둠의 기준에 비추어 왜 이 조합이 가장 만족스러운지 써요.">${esc(G.reason)}</textarea></div>
-      <div class="card"><h3>👪 학부모 질문 한 줄</h3><input data-field="advice" value="${esc(G.advice)}" placeholder="부모님께 받은 질문을 한 줄로 적어요. (예: 21명 모두 골고루 즐길 수 있나요?)"></div>
+      <div class="card"><h3>👪 학부모 자문 한 줄</h3><input data-field="advice" value="${esc(G.advice)}" placeholder="부모님께 들은 조언을 한 줄로 적어요."></div>
       <div class="card"><h3>✅ 기획서 점검</h3><ul class="list checks" id="checks">${checksHtml()}</ul></div>
     </div>`;
 }
@@ -371,10 +372,10 @@ function presentHtml(g, n) {
   return `<button class="btn close" data-act="closePresent">닫기 ✕</button>
     <h2>${n}모둠 학급 보상 기획서</h2>
     <div class="pg">
-      <div class="card"><h3>🔺 우리 기준</h3><ol style="margin:0;padding-left:28px">${crit.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>-</li>"}</ol></div>
-      <div class="card"><h3>🛒 최종 선택 · <span style="color:${total > BUDGET ? "var(--danger)" : "var(--brand)"}">${won(total)}</span></h3><ul class="list">${chosen.map((it) => `<li><span>${photo(it, "pthumb")}${esc(it.name)}</span><b>${won(it.price)}</b></li>`).join("")}${g.goodsNone ? `<li><span>🎁 기념품: 선택 안 함</span><b>0원</b></li>` : ""}</ul></div>
+      <div class="card"><h3>💬 우리 기준</h3><ol style="margin:0;padding-left:28px">${crit.map((x) => `<li>${esc(x)}</li>`).join("") || "<li>-</li>"}</ol></div>
+      <div class="card"><h3>🛒 최종 선택 · <span style="color:${total > BUDGET ? "var(--danger)" : "var(--brand)"}">${won(total)}</span></h3><ul class="list">${chosen.map((it) => `<li><span>${photo(it, "pthumb")}${esc(it.name)}</span><b>${won(it.price)}</b></li>`).join("")}${noneRows(g)}</ul></div>
       <div class="card"><h3>✍️ 포기한 것과 까닭</h3><p style="margin:0;white-space:pre-wrap">${esc(g.forgoReason || "아직 적지 않았어요.")}</p></div>
-      <div class="card"><h3>💬 고른 까닭</h3><p style="margin:0">${esc(g.reason)}</p>${g.advice ? `<h3 style="margin-top:16px">👪 학부모 질문</h3><p style="margin:0">${esc(g.advice)}</p>` : ""}</div>
+      <div class="card"><h3>💬 고른 까닭</h3><p style="margin:0">${esc(g.reason)}</p>${g.advice ? `<h3 style="margin-top:16px">👪 학부모 자문</h3><p style="margin:0">${esc(g.advice)}</p>` : ""}</div>
     </div>`;
 }
 function openPresent(g, n) { $("#present").innerHTML = presentHtml(g, n); $("#present").classList.add("show"); }
@@ -419,16 +420,16 @@ document.addEventListener("click", (e) => {
     }
     case "wishReset": votes = {}; wishShown = false; store.set("rs.votes", votes); break;
     case "cat": shopCat = v; break;
-    case "noGoods":
-      G.goodsNone = !G.goodsNone;
-      if (G.goodsNone) {
-        G.cart = G.cart.filter((x) => item(x)?.cat !== "goods");
-      }
+    case "noGoods": {
+      if (!["drink", "activity", "goods"].includes(v)) return;
+      G[v + "None"] = !G[v + "None"];
+      if (G[v + "None"]) G.cart = G.cart.filter((x) => item(x)?.cat !== v);
       saveG();
       break;
+    }
     case "add": {
       if (!G.cart.includes(id)) G.cart.push(id);
-      if (item(id)?.cat === "goods") G.goodsNone = false;
+      if (item(id)) G[item(id).cat + "None"] = false;
       saveG();
       const after = totalOf(G);
       render();

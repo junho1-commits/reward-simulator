@@ -1,10 +1,10 @@
-/* 품목: 21명 기준, 배송·배달비 제외. 사진은 img/<id>.jpg
+/* 품목: 6모둠 21명 기준, 배송·배달비 제외. 사진은 img/<id>.jpg
    cat: food(먹거리) · drink(음료) · activity(활동) · goods(기념품) */
 const ITEMS = [
-  { id: "chicken",   cat: "food",     name: "후라이드 치킨",      unit: "5마리",                  calc: "1마리 21,000원 × 5",                     price: 105000, share: "약 4명당 1마리",                 pros: "모두 좋아하고 든든해요",            cons: "가장 비싸고 기름진 뒤처리가 필요해요" },
-  { id: "pizza",     cat: "food",     name: "페퍼로니 피자 L",    unit: "3판 (24조각)",           calc: "1판 27,400원 × 3",                       price: 82200,  share: "1인 1조각 (3조각 남음)",         pros: "나눠 먹기 쉬워요",                  cons: "1인 1조각이라 양이 적을 수 있어요" },
+  { id: "chicken",   cat: "food",     name: "후라이드 치킨",      unit: "6마리",                  calc: "1마리 21,000원 × 6",                     price: 126000, share: "모둠당 1마리",                 pros: "모두 좋아하고 든든해요",            cons: "가장 비싸고 기름진 뒤처리가 필요해요" },
+  { id: "pizza",     cat: "food",     name: "페퍼로니 피자 L",    unit: "3판 (24조각)",           calc: "1판 27,400원 × 3",                       price: 82200,  share: "모둠당 반 판(4조각), 1인 1조각",         pros: "나눠 먹기 쉬워요",                  cons: "1인 1조각이라 양이 적을 수 있어요" },
   { id: "burger",    cat: "food",     name: "불고기버거",         unit: "21개",                   calc: "1개 3,800원 × 21",                       price: 79800,  share: "1인 1개",                        pros: "한 사람이 하나씩 온전히 먹어요",    cons: "식으면 맛이 떨어지고 포장 쓰레기가 많아요" },
-  { id: "bunsik",    cat: "food",     name: "떡볶이 + 김밥",      unit: "떡볶이 2통 + 김밥 6줄",  calc: "떡볶이 14,000원 × 2 + 김밥 4,000원 × 6", price: 52000,  share: "1인 떡볶이 조금 + 김밥 약 3조각", pros: "가격에 비해 양이 많아요",           cons: "매운 음식을 못 먹는 친구가 있어요" },
+  { id: "bunsik",    cat: "food",     name: "떡볶이 + 김밥",      unit: "떡볶이 2통 + 김밥 6줄",  calc: "떡볶이 14,000원 × 2 + 김밥 4,000원 × 6", price: 52000,  share: "떡볶이 6모둠 분배 + 모둠당 김밥 1줄", pros: "가격에 비해 양이 많아요",           cons: "매운 음식을 못 먹는 친구가 있어요" },
   { id: "snack",     cat: "food",     name: "과자 종합 선물세트", unit: "33봉",                   calc: "세트 1개 29,860원",                      price: 29860,  share: "1인 1봉 (12봉 남음)",            pros: "여러 가지 맛을 골라 먹어요",        cons: "쓰레기가 많이 나와요" },
 
   { id: "cola",      cat: "drink",    name: "콜라 (캔)",          unit: "245ml × 30캔",           calc: "30캔 11,290원",                          price: 11290,  share: "1인 1캔 (9캔 남음)",             pros: "싸고 시원해요",                     cons: "탄산과 설탕이 많아요" },
@@ -19,7 +19,7 @@ const ITEMS = [
   { id: "keyring",   cat: "goods",    name: "비즈 키링 만들기 키트", unit: "30인용",              calc: "30인용 1세트 45,000원",                  price: 45000,  share: "1인 1개 직접 만들기 (9개 남음)", pros: "직접 만들어 오래 간직해요",         cons: "만드는 시간이 필요해요" }
 ];
 const CATS = { food: "🍽️ 먹거리", drink: "🥤 음료", activity: "🎯 활동", goods: "🎁 기념품" };
-const REQUIRED_CATS = ["food"];   // 1개 이상 꼭 담아야 하는 분류. 음료·활동·기념품은 필수가 아니에요. (기념품에는 '선택 안 함' 카드가 있어요)
+const REQUIRED_CATS = ["food", "drink", "activity"];   // 1개 이상 꼭 담아야 하는 분류. 기념품은 '선택 안 함'도 돼요.
 
 const PRICE_SOURCES = [
   "확인일: 2026년 10월 25일. 쇼핑몰 가격은 할인·쿠폰에 따라 매일 바뀌어요.",
