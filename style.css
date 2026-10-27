@@ -110,7 +110,7 @@ footer.credits button { text-decoration: underline; color: var(--muted); font-si
 .alert { margin-top: 10px; padding: 12px 16px; border-radius: 12px; background: var(--danger-soft); color: var(--danger); font-size: 20px; font-weight: 800; }
 
 /* criteria record */
-.crit-in { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+.crit-in { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 6px; }
 .crit-in label { font-size: 13px; font-weight: 800; color: #7a4b05; }
 
 /* shop */
